@@ -76,12 +76,13 @@ func PostImage(imgpath string) error {
 		return fmt.Errorf("failed to login: %s", err)
 	}
 	defer insta.Logout()
-	resp, err := insta.UploadPhoto(imgpath, *caption, insta.NewUploadID(), 87, 0)
+	f, err := os.Open(imgpath)
 	if err != nil {
-		return fmt.Errorf("failed to upload:", err)
+		return err
 	}
-	if resp.Status != "ok" {
-		return fmt.Errorf("invalid response: %s", resp.Status)
+	defer f.Close()
+	if _, err := insta.UploadPhoto(f, *caption, 87, 0); err != nil {
+		return fmt.Errorf("failed to upload:", err)
 	}
 	return nil
 }

@@ -8,9 +8,7 @@ import (
 	"image"
 	"image/jpeg"
 	"log"
-	"math/rand"
 	"sort"
-	"time"
 )
 
 var (
@@ -23,7 +21,6 @@ var (
 )
 
 func init() {
-	rand.Seed(time.Now().Unix())
 	flag.Parse()
 }
 

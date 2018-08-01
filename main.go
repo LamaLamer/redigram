@@ -19,6 +19,7 @@ var (
 	password  = flag.String("password", "", "Instagram Password")
 	caption   = flag.String("caption", "#LPT", "The post caption")
 	storedir  = flag.String("store", "used", "Storage directory")
+	minscore  = flag.Int("minscore", 100, "Minimum score")
 )
 
 func init() {
@@ -40,7 +41,7 @@ func DoPost() error {
 	}
 	sort.Sort(ByScore(ss))
 	for _, s := range ss {
-		if st.Contains(s) {
+		if st.Contains(s) || s.Score < *minscore {
 			continue
 		}
 		im, err := MakeImage(s.Title)
@@ -50,7 +51,7 @@ func DoPost() error {
 		if err := st.Insert(s); err != nil {
 			return err
 		}
-		fmt.Printf("%d: %s\n", s.Score, s.Title)
+		fmt.Printf("Score %d:\n\n%s\n", s.Score, s.Title)
 		return PostImage(im)
 	}
 	return fmt.Errorf("all %d submissions are used", len(ss))

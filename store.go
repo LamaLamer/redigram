@@ -1,26 +1,26 @@
 package main
 
 import (
-	"fmt"
-	"os"
+	"github.com/peterbourgon/diskv"
 )
 
-func IsUsed(s string) (bool, error) {
-	_, err := os.Stat(fmt.Sprintf("used/%s.txt", s))
-	if os.IsNotExist(err) {
-		return false, nil
-	}
-	if err != nil {
-		return false, err
-	}
-	return true, nil
+type Store struct {
+	kv *diskv.Diskv
 }
 
-func MarkUsed(s string, text string) error {
-	f, err := os.Create(fmt.Sprintf("used/%s.txt", s))
-	if err != nil {
-		return err
+func NewStore(dir string) *Store {
+	return &Store{
+		kv: diskv.New(diskv.Options{
+			BasePath:     dir,
+			CacheSizeMax: 1024 * 1024,
+		}),
 	}
-	_, err = f.WriteString(text)
-	return err
+}
+
+func (s *Store) Contains(sub Submission) bool {
+	return s.kv.Has(sub.Id)
+}
+
+func (s *Store) Insert(sub Submission) error {
+	return s.kv.WriteString(sub.Id, sub.Title)
 }

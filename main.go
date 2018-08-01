@@ -18,6 +18,7 @@ var (
 	username  = flag.String("username", "unethicallifeprotips", "Instagram Username")
 	password  = flag.String("password", "", "Instagram Password")
 	caption   = flag.String("caption", "#LPT", "The post caption")
+	storedir  = flag.String("store", "used", "Storage directory")
 )
 
 func init() {
@@ -32,24 +33,21 @@ func main() {
 }
 
 func DoPost() error {
+	st := NewStore(*storedir)
 	ss, err := GetSubmissions(*subreddit)
 	if err != nil {
 		return err
 	}
 	sort.Sort(ByScore(ss))
 	for _, s := range ss {
-		used, err := IsUsed(s.Id)
-		if err != nil {
-			return err
-		}
-		if used {
+		if st.Contains(s) {
 			continue
 		}
 		im, err := MakeImage(s.Title)
 		if err != nil {
 			return err
 		}
-		if err := MarkUsed(s.Id, s.Title); err != nil {
+		if err := st.Insert(s); err != nil {
 			return err
 		}
 		fmt.Printf("%d: %s\n", s.Score, s.Title)

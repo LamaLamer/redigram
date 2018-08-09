@@ -39,8 +39,13 @@ func MakeCaption(s string) (string, error) {
 	if err != nil {
 		return "", err
 	}
+	seen := map[string]bool{}
 	var caption strings.Builder
 	for _, tok := range doc.Tokens() {
+		if seen[tok.Text] {
+			continue
+		}
+		seen[tok.Text] = true
 		if caption.Len()+len(tok.Text) > MaxCaptionLen {
 			break
 		}

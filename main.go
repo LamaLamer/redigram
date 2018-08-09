@@ -74,7 +74,7 @@ func DoPost() error {
 		if err := st.Insert(s); err != nil {
 			return err
 		}
-		fmt.Printf("Score: %d\nTitle: %s\nCaption: %s\n", s.Score, s.Title)
+		fmt.Printf("Score: %d\nTitle: %s\nCaption: %s\n", s.Score, s.Title, cap)
 		return PostImage(im, cap)
 	}
 	return fmt.Errorf("all %d submissions are used", len(ss))

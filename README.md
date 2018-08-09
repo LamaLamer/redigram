@@ -4,8 +4,6 @@
 
 ```
 Usage of ./r2i:
-  -caption string
-    	The post caption (default "#LPT")
   -password string
     	Instagram Password
   -sub string

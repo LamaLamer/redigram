@@ -6,6 +6,7 @@ import (
 	"image"
 	"image/color"
 	"io/ioutil"
+	"log"
 	"math"
 )
 
@@ -14,11 +15,11 @@ var font *truetype.Font
 func init() {
 	data, err := ioutil.ReadFile("trade-gothic-bold-condensed-20.ttf")
 	if err != nil {
-		panic(err)
+		log.Fatal(err)
 	}
 	font, err = truetype.Parse(data)
 	if err != nil {
-		panic(err)
+		log.Fatal(err)
 	}
 }
 

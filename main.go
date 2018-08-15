@@ -88,7 +88,7 @@ func DoPost() error {
 func PostImage(m image.Image, caption string) error {
 	insta := goinsta.New(*username, *password)
 	if err := insta.Login(); err != nil {
-		return fmt.Errorf("failed to login: %s", err)
+		return fmt.Errorf("failed to login: %v", err)
 	}
 	defer insta.Logout()
 	var buf bytes.Buffer
@@ -96,7 +96,7 @@ func PostImage(m image.Image, caption string) error {
 		return err
 	}
 	if _, err := insta.UploadPhoto(&buf, caption, 87, 0); err != nil {
-		return fmt.Errorf("failed to upload:", err)
+		return fmt.Errorf("failed to upload: %v", err)
 	}
 	return nil
 }

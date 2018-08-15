@@ -6,6 +6,7 @@ import (
 	"fmt"
 )
 
+// Users is a struct that stores many user's returned by many different methods.
 type Users struct {
 	inst *Instagram
 
@@ -34,6 +35,7 @@ func (users *Users) SetInstagram(inst *Instagram) {
 	users.inst = inst
 }
 
+// ErrNoMore is an error that comes when there is no more elements available on the list.
 var ErrNoMore = errors.New("List end have been reached")
 
 // Next allows to paginate after calling:
@@ -78,6 +80,11 @@ func (users *Users) Next() bool {
 	return false
 }
 
+// Error returns users error
+func (users *Users) Error() error {
+	return users.err
+}
+
 func (users *Users) setValues() {
 	for i := range users.Users {
 		users.Users[i].inst = users.inst
@@ -93,31 +100,31 @@ type userResp struct {
 type User struct {
 	inst *Instagram
 
-	ID                         int64  `json:"pk"`
-	Username                   string `json:"username"`
-	FullName                   string `json:"full_name"`
-	Biography                  string `json:"biography"`
-	ProfilePicURL              string `json:"profile_pic_url"`
-	Email                      string `json:"email"`
-	PhoneNumber                string `json:"phone_number"`
-	IsBusiness                 bool   `json:"is_business"`
-	Gender                     int    `json:"gender"`
-	ProfilePicID               string `json:"profile_pic_id"`
-	HasAnonymousProfilePicture bool   `json:"has_anonymous_profile_picture"`
-	IsPrivate                  bool   `json:"is_private"`
-	IsUnpublished              bool   `json:"is_unpublished"`
-	AllowedCommenterType       string `json:"allowed_commenter_type"`
-	IsVerified                 bool   `json:"is_verified"`
-	MediaCount                 int    `json:"media_count"`
-	FollowerCount              int    `json:"follower_count"`
-	FollowingCount             int    `json:"following_count"`
-	FollowingTagCount          int    `json:"following_tag_count"`
-	MutualFollowersID          []int  `json:"profile_context_mutual_follow_ids"`
-	ProfileContext             string `json:"profile_context"`
-	GeoMediaCount              int    `json:"geo_media_count"`
-	ExternalURL                string `json:"external_url"`
-	HasBiographyTranslation    bool   `json:"has_biography_translation"`
-	ExternalLynxURL            string `json:"external_lynx_url"`
+	ID                         int64   `json:"pk"`
+	Username                   string  `json:"username"`
+	FullName                   string  `json:"full_name"`
+	Biography                  string  `json:"biography"`
+	ProfilePicURL              string  `json:"profile_pic_url"`
+	Email                      string  `json:"email"`
+	PhoneNumber                string  `json:"phone_number"`
+	IsBusiness                 bool    `json:"is_business"`
+	Gender                     int     `json:"gender"`
+	ProfilePicID               string  `json:"profile_pic_id"`
+	HasAnonymousProfilePicture bool    `json:"has_anonymous_profile_picture"`
+	IsPrivate                  bool    `json:"is_private"`
+	IsUnpublished              bool    `json:"is_unpublished"`
+	AllowedCommenterType       string  `json:"allowed_commenter_type"`
+	IsVerified                 bool    `json:"is_verified"`
+	MediaCount                 int     `json:"media_count"`
+	FollowerCount              int     `json:"follower_count"`
+	FollowingCount             int     `json:"following_count"`
+	FollowingTagCount          int     `json:"following_tag_count"`
+	MutualFollowersID          []int64 `json:"profile_context_mutual_follow_ids"`
+	ProfileContext             string  `json:"profile_context"`
+	GeoMediaCount              int     `json:"geo_media_count"`
+	ExternalURL                string  `json:"external_url"`
+	HasBiographyTranslation    bool    `json:"has_biography_translation"`
+	ExternalLynxURL            string  `json:"external_lynx_url"`
 	BiographyWithEntities      struct {
 		RawText  string        `json:"raw_text"`
 		Entities []interface{} `json:"entities"`
@@ -152,7 +159,7 @@ type User struct {
 	SocialContext                string       `json:"social_context,omitempty"`
 	SearchSocialContext          string       `json:"search_social_context,omitempty"`
 	MutualFollowersCount         float64      `json:"mutual_followers_count"`
-	LatestReelMedia              int          `json:"latest_reel_media,omitempty"`
+	LatestReelMedia              int64        `json:"latest_reel_media,omitempty"`
 	IsCallToActionEnabled        bool         `json:"is_call_to_action_enabled"`
 	FbPageCallToActionID         string       `json:"fb_page_call_to_action_id"`
 	Zip                          string       `json:"zip"`
@@ -228,21 +235,27 @@ func (user *User) Block() error {
 			"user_id": user.ID,
 		},
 	)
-	if err == nil {
-		body, err := insta.sendRequest(
-			&reqOptions{
-				Endpoint: fmt.Sprintf(urlUserBlock, user.ID),
-				Query:    generateSignature(data),
-				IsPost:   true,
-			},
-		)
-		if err == nil {
-			resp := friendResp{}
-			err = json.Unmarshal(body, &resp)
-			user.Friendship = resp.Friendship
-		}
+	if err != nil {
+		return err
 	}
-	return err
+	body, err := insta.sendRequest(
+		&reqOptions{
+			Endpoint: fmt.Sprintf(urlUserBlock, user.ID),
+			Query:    generateSignature(data),
+			IsPost:   true,
+		},
+	)
+	if err != nil {
+		return err
+	}
+	resp := friendResp{}
+	err = json.Unmarshal(body, &resp)
+	user.Friendship = resp.Friendship
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // Unblock unblocks user
@@ -257,21 +270,27 @@ func (user *User) Unblock() error {
 			"user_id": user.ID,
 		},
 	)
-	if err == nil {
-		body, err := insta.sendRequest(
-			&reqOptions{
-				Endpoint: fmt.Sprintf(urlUserUnblock, user.ID),
-				Query:    generateSignature(data),
-				IsPost:   true,
-			},
-		)
-		if err == nil {
-			resp := friendResp{}
-			err = json.Unmarshal(body, &resp)
-			user.Friendship = resp.Friendship
-		}
+	if err != nil {
+		return err
 	}
-	return err
+	body, err := insta.sendRequest(
+		&reqOptions{
+			Endpoint: fmt.Sprintf(urlUserUnblock, user.ID),
+			Query:    generateSignature(data),
+			IsPost:   true,
+		},
+	)
+	if err != nil {
+		return err
+	}
+	resp := friendResp{}
+	err = json.Unmarshal(body, &resp)
+	user.Friendship = resp.Friendship
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // Follow started following some user
@@ -289,21 +308,27 @@ func (user *User) Follow() error {
 			"user_id": user.ID,
 		},
 	)
-	if err == nil {
-		body, err := insta.sendRequest(
-			&reqOptions{
-				Endpoint: fmt.Sprintf(urlUserFollow, user.ID),
-				Query:    generateSignature(data),
-				IsPost:   true,
-			},
-		)
-		if err == nil {
-			resp := friendResp{}
-			err = json.Unmarshal(body, &resp)
-			user.Friendship = resp.Friendship
-		}
+	if err != nil {
+		return err
 	}
-	return err
+	body, err := insta.sendRequest(
+		&reqOptions{
+			Endpoint: fmt.Sprintf(urlUserFollow, user.ID),
+			Query:    generateSignature(data),
+			IsPost:   true,
+		},
+	)
+	if err != nil {
+		return err
+	}
+	resp := friendResp{}
+	err = json.Unmarshal(body, &resp)
+	user.Friendship = resp.Friendship
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // Unfollow unfollows user
@@ -318,21 +343,27 @@ func (user *User) Unfollow() error {
 			"user_id": user.ID,
 		},
 	)
-	if err == nil {
-		body, err := insta.sendRequest(
-			&reqOptions{
-				Endpoint: fmt.Sprintf(urlUserUnfollow, user.ID),
-				Query:    generateSignature(data),
-				IsPost:   true,
-			},
-		)
-		if err == nil {
-			resp := friendResp{}
-			err = json.Unmarshal(body, &resp)
-			user.Friendship = resp.Friendship
-		}
+	if err != nil {
+		return err
 	}
-	return err
+	body, err := insta.sendRequest(
+		&reqOptions{
+			Endpoint: fmt.Sprintf(urlUserUnfollow, user.ID),
+			Query:    generateSignature(data),
+			IsPost:   true,
+		},
+	)
+	if err != nil {
+		return err
+	}
+	resp := friendResp{}
+	err = json.Unmarshal(body, &resp)
+	user.Friendship = resp.Friendship
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // FriendShip allows user to get friend relationship.

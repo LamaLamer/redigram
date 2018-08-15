@@ -55,14 +55,14 @@ type Inbox struct {
 	UnseenCountTs       int64  `json:"unseen_count_ts"`
 	BlendedInboxEnabled bool   `json:"blended_inbox_enabled"`
 	// this fields are copied from response
-	SeqID                int   `json:"seq_id"`
+	SeqID                int64 `json:"seq_id"`
 	PendingRequestsTotal int   `json:"pending_requests_total"`
 	SnapshotAtMs         int64 `json:"snapshot_at_ms"`
 }
 
 type inboxResp struct {
 	Inbox                Inbox  `json:"inbox"`
-	SeqID                int    `json:"seq_id"`
+	SeqID                int64  `json:"seq_id"`
 	PendingRequestsTotal int    `json:"pending_requests_total"`
 	SnapshotAtMs         int64  `json:"snapshot_at_ms"`
 	Status               string `json:"status"`
@@ -101,6 +101,36 @@ func (inbox *Inbox) Sync() error {
 			}
 		}
 	}
+	return err
+}
+
+// New initialises a new conversation with a user, for further messages you should use Conversation.Send
+//
+// See example: examples/inbox/newconversation.go
+func (inbox *Inbox) New(user *User, text string) error {
+	insta := inbox.inst
+	to, err := prepareRecipients(user.ID)
+	if err != nil {
+		return err
+	}
+
+	data := insta.prepareDataQuery(
+		map[string]interface{}{
+			"recipient_users": to,
+			"client_context":  generateUUID(),
+			"thread_ids":      `["0"]`,
+			"action":          "send_item",
+			"text":            text,
+		},
+	)
+	_, err = insta.sendRequest(
+		&reqOptions{
+			Connection: "keep-alive",
+			Endpoint:   urlInboxSend,
+			Query:      data,
+			IsPost:     true,
+		},
+	)
 	return err
 }
 
@@ -150,6 +180,7 @@ func (inbox *Inbox) Next() bool {
 	return false
 }
 
+// Conversation is the representation of an instagram already established conversation through direct messages.
 type Conversation struct {
 	inst     *Instagram
 	err      error

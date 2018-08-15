@@ -21,7 +21,7 @@ import (
 // All Item has Images or Videos objects which contains the url(s).
 // You can use Download function to get the best quality Image or Video from Item.
 type Item struct {
-	media    Media     `json:"-"`
+	media    Media
 	Comments *Comments `json:"-"`
 
 	TakenAt          float64 `json:"taken_at"`
@@ -41,19 +41,19 @@ type Item struct {
 	CaptionIsEdited  bool    `json:"caption_is_edited"`
 	Likes            int     `json:"like_count"`
 	HasLiked         bool    `json:"has_liked"`
-	// _TopLikers can be `string` or `[]string`.
+	// Toplikers can be `string` or `[]string`.
 	// Use TopLikers function instead of getting it directly.
-	_TopLikers                   interface{} `json:"top_likers"`
+	Toplikers                    interface{} `json:"top_likers"`
 	Likers                       []User      `json:"likers"`
 	CommentLikesEnabled          bool        `json:"comment_likes_enabled"`
 	CommentThreadingEnabled      bool        `json:"comment_threading_enabled"`
 	HasMoreComments              bool        `json:"has_more_comments"`
 	MaxNumVisiblePreviewComments int         `json:"max_num_visible_preview_comments"`
-	// _PreviewComments can be `string` or `[]string` or `[]Comment`.
+	// Previewcomments can be `string` or `[]string` or `[]Comment`.
 	// Use PreviewComments function instead of getting it directly.
-	_PreviewComments interface{} `json:"preview_comments,omitempty"`
-	CommentCount     int         `json:"comment_count"`
-	PhotoOfYou       bool        `json:"photo_of_you"`
+	Previewcomments interface{} `json:"preview_comments,omitempty"`
+	CommentCount    int         `json:"comment_count"`
+	PhotoOfYou      bool        `json:"photo_of_you"`
 	// Tags are tagged people in photo
 	Tags struct {
 		In []Tag `json:"in"`
@@ -66,7 +66,7 @@ type Item struct {
 	Images          Images   `json:"image_versions2,omitempty"`
 	OriginalWidth   int      `json:"original_width,omitempty"`
 	OriginalHeight  int      `json:"original_height,omitempty"`
-	ImportedTakenAt int      `json:"imported_taken_at,omitempty"`
+	ImportedTakenAt int64    `json:"imported_taken_at,omitempty"`
 	Location        Location `json:"location,omitempty"`
 	Lat             float64  `json:"lat,omitempty"`
 	Lng             float64  `json:"lng,omitempty"`
@@ -93,7 +93,7 @@ type Item struct {
 	StoryProductItems        []interface{} `json:"story_product_items"`
 	SupportsReelReactions    bool          `json:"supports_reel_reactions"`
 	ShowOneTapFbShareTooltip bool          `json:"show_one_tap_fb_share_tooltip"`
-	HasSharedToFb            int           `json:"has_shared_to_fb"`
+	HasSharedToFb            int64         `json:"has_shared_to_fb"`
 	Mentions                 []Mentions
 }
 
@@ -187,7 +187,7 @@ func GetBest(obj interface{}) string {
 	return m.url
 }
 
-// Hastags returns caption hashtags.
+// Hashtags returns caption hashtags.
 //
 // Item media parent must be FeedMedia.
 //
@@ -395,7 +395,7 @@ func (item *Item) Download(folder, name string) (imgs, vds string, err error) {
 // TopLikers returns string slice or single string (inside string slice)
 // Depending on TopLikers parameter.
 func (item *Item) TopLikers() []string {
-	switch s := item._TopLikers.(type) {
+	switch s := item.Toplikers.(type) {
 	case string:
 		return []string{s}
 	case []string:
@@ -408,7 +408,7 @@ func (item *Item) TopLikers() []string {
 // Depending on PreviewComments parameter.
 // If PreviewComments are string or []string only the Text field will be filled.
 func (item *Item) PreviewComments() []Comment {
-	switch s := item._PreviewComments.(type) {
+	switch s := item.Previewcomments.(type) {
 	case []Comment:
 		return s
 	case []string:
@@ -421,7 +421,7 @@ func (item *Item) PreviewComments() []Comment {
 		return comments
 	case string:
 		comments := []Comment{
-			Comment{
+			{
 				Text: s,
 			},
 		}
@@ -430,9 +430,10 @@ func (item *Item) PreviewComments() []Comment {
 	return nil
 }
 
+//Media interface defines methods for both StoryMedia and FeedMedia.
 type Media interface {
 	// Next allows pagination
-	Next() bool
+	Next(...interface{}) bool
 	// Error returns error (in case it have been occurred)
 	Error() error
 	// ID returns media id
@@ -443,6 +444,7 @@ type Media interface {
 	instagram() *Instagram
 }
 
+//StoryMedia is the struct that handles the information from the methods to get info about Stories.
 type StoryMedia struct {
 	inst     *Instagram
 	endpoint string
@@ -451,7 +453,7 @@ type StoryMedia struct {
 	err error
 
 	Pk              interface{} `json:"id"`
-	LatestReelMedia int         `json:"latest_reel_media"`
+	LatestReelMedia int64       `json:"latest_reel_media"`
 	ExpiringAt      float64     `json:"expiring_at"`
 	HaveBeenSeen    float64     `json:"seen"`
 	CanReply        bool        `json:"can_reply"`
@@ -514,7 +516,7 @@ func (media *StoryMedia) setValues() {
 	}
 }
 
-// Error returns error happend any error
+// Error returns error happened any error
 func (media StoryMedia) Error() error {
 	return media.err
 }
@@ -600,7 +602,7 @@ func (media *StoryMedia) Sync() error {
 				media.setValues()
 				return nil
 			}
-			err = fmt.Errorf("cannot find %s structure in response")
+			err = fmt.Errorf("cannot find %s structure in response", id)
 		}
 	}
 	return err
@@ -609,9 +611,10 @@ func (media *StoryMedia) Sync() error {
 // Next allows pagination after calling:
 // User.Stories
 //
+//
 // returns false when list reach the end
 // if StoryMedia.Error() is ErrNoMore no problem have been occurred.
-func (media *StoryMedia) Next() bool {
+func (media *StoryMedia) Next(params ...interface{}) bool {
 	if media.err != nil {
 		return false
 	}
@@ -656,7 +659,7 @@ type FeedMedia struct {
 	AutoLoadMoreEnabled bool   `json:"auto_load_more_enabled"`
 	Status              string `json:"status"`
 	// Can be int64 and string
-	// this is why we recomend Next() usage :')
+	// this is why we recommend Next() usage :')
 	NextID interface{} `json:"next_max_id"`
 }
 
@@ -732,16 +735,18 @@ func (media *FeedMedia) ID() string {
 		return s
 	case int64:
 		return strconv.FormatInt(s, 10)
+	case json.Number:
+		return string(s)
 	}
 	return ""
 }
 
 // Next allows pagination after calling:
 // User.Feed
-//
+// Params: ranked_content is set to "true" by default, you can set it to false by either passing "false" or false as parameter.
 // returns false when list reach the end.
 // if FeedMedia.Error() is ErrNoMore no problem have been occurred.
-func (media *FeedMedia) Next() bool {
+func (media *FeedMedia) Next(params ...interface{}) bool {
 	if media.err != nil {
 		return false
 	}
@@ -749,11 +754,24 @@ func (media *FeedMedia) Next() bool {
 	insta := media.inst
 	endpoint := media.endpoint
 	next := media.ID()
+	ranked := "true"
 
 	if media.uid != 0 {
 		endpoint = fmt.Sprintf(endpoint, media.uid)
 	}
 
+	for _, param := range params {
+		switch s := param.(type) {
+		case string:
+			if _, err := strconv.ParseBool(s); err == nil {
+				ranked = s
+			}
+		case bool:
+			if !s {
+				ranked = "false"
+			}
+		}
+	}
 	body, err := insta.sendRequest(
 		&reqOptions{
 			Endpoint: endpoint,
@@ -761,13 +779,15 @@ func (media *FeedMedia) Next() bool {
 				"max_id":         next,
 				"rank_token":     insta.rankToken,
 				"min_timestamp":  media.timestamp,
-				"ranked_content": "true",
+				"ranked_content": ranked,
 			},
 		},
 	)
 	if err == nil {
 		m := FeedMedia{}
-		err = json.Unmarshal(body, &m)
+		d := json.NewDecoder(bytes.NewReader(body))
+		d.UseNumber()
+		err = d.Decode(&m)
 		if err == nil {
 			*media = m
 			media.inst = insta
@@ -855,7 +875,7 @@ func (insta *Instagram) UploadPhoto(photo io.Reader, photoCaption string, qualit
 	}
 
 	if result.Status != "ok" {
-		return out, fmt.Errorf("unkown error, status: %s", result.Status)
+		return out, fmt.Errorf("unknown error, status: %s", result.Status)
 	}
 
 	width, height, err := getImageDimensionFromReader(&buf)

@@ -51,7 +51,7 @@ const (
 
 	// users
 	urlUserByName     = "users/%s/usernameinfo/"
-	urlUserById       = "users/%d/info/"
+	urlUserByID       = "users/%d/info/"
 	urlUserBlock      = "friendships/block/%d/"
 	urlUserUnblock    = "friendships/unblock/%d/"
 	urlUserFollow     = "friendships/create/%d/"
@@ -86,7 +86,7 @@ const (
 	urlMediaLikers = "media/%s/likers/"
 
 	// comments
-	urlCommentAdd     = "media/%s/comment/"
+	urlCommentAdd     = "media/%d/comment/"
 	urlCommentDelete  = "media/%s/comment/%s/delete/"
 	urlCommentSync    = "media/%s/comments/"
 	urlCommentDisable = "media/%s/disable_comments/"

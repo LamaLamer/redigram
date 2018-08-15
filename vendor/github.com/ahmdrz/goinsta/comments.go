@@ -15,7 +15,7 @@ type Comments struct {
 	err      error
 
 	Items                          []Comment `json:"comments"`
-	CommentCount                   int       `json:"comment_count"`
+	CommentCount                   int64     `json:"comment_count"`
 	Caption                        Caption   `json:"caption"`
 	CaptionIsEdited                bool      `json:"caption_is_edited"`
 	HasMoreComments                bool      `json:"has_more_comments"`
@@ -32,9 +32,9 @@ type Comments struct {
 	//PreviewComments                []Comment `json:"preview_comments"`
 }
 
-func (c *Comments) setValues() {
-	for i := range c.Items {
-		c.Items[i].setValues(c.item.media.instagram())
+func (comments *Comments) setValues() {
+	for i := range comments.Items {
+		comments.Items[i].setValues(comments.item.media.instagram())
 	}
 }
 
@@ -283,11 +283,12 @@ floop:
 	return nil
 }
 
+// Comment is a type of Media retrieved by the Comments methods
 type Comment struct {
-	inst *Instagram
+	inst  *Instagram
+	idstr string
 
 	ID                             int64     `json:"pk"`
-	idstr                          string    `json:"-"`
 	Text                           string    `json:"text"`
 	Type                           int       `json:"type"`
 	User                           User      `json:"user"`
@@ -297,8 +298,8 @@ type Comment struct {
 	CommentIndex                   int       `json:"comment_index"`
 	CommentLikeCount               int       `json:"comment_like_count"`
 	ContentType                    string    `json:"content_type"`
-	CreatedAt                      int       `json:"created_at"`
-	CreatedAtUtc                   int       `json:"created_at_utc"`
+	CreatedAt                      int64     `json:"created_at"`
+	CreatedAtUtc                   int64     `json:"created_at_utc"`
 	DidReportAsSpam                bool      `json:"did_report_as_spam"`
 	HasLikedComment                bool      `json:"has_liked_comment"`
 	InlineComposerDisplayCondition string    `json:"inline_composer_display_condition"`

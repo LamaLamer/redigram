@@ -3,6 +3,7 @@ package goinsta
 import (
 	"crypto/tls"
 	"encoding/json"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"net/http/cookiejar"
@@ -63,18 +64,18 @@ type Instagram struct {
 }
 
 // SetDeviceID sets device id
-func (i *Instagram) SetDeviceID(id string) {
-	i.dID = id
+func (inst *Instagram) SetDeviceID(id string) {
+	inst.dID = id
 }
 
 // SetUUID sets uuid
-func (i *Instagram) SetUUID(uuid string) {
-	i.uuid = uuid
+func (inst *Instagram) SetUUID(uuid string) {
+	inst.uuid = uuid
 }
 
 // SetPhoneID sets phone id
-func (i *Instagram) SetPhoneID(id string) {
-	i.pid = id
+func (inst *Instagram) SetPhoneID(id string) {
+	inst.pid = id
 }
 
 // New creates Instagram structure
@@ -129,12 +130,12 @@ func (inst *Instagram) UnsetProxy() {
 }
 
 // Save exports config to ~/.goinsta
-func (inst *Instagram) Save() {
-	home := os.Getenv("$HOME")
+func (inst *Instagram) Save() error {
+	home := os.Getenv("HOME")
 	if home == "" {
-		home = os.Getenv("$home") // for plan9
+		home = os.Getenv("home") // for plan9
 	}
-	inst.Export(filepath.Join(home, ".goinsta"))
+	return inst.Export(filepath.Join(home, ".goinsta"))
 }
 
 // Export exports *Instagram object options
@@ -162,22 +163,46 @@ func (inst *Instagram) Export(path string) error {
 	return ioutil.WriteFile(path, bytes, 0644)
 }
 
-// Import imports instagram configuration
+// Export exports selected *Instagram object options to an io.Writer
+func Export(inst *Instagram, writer io.Writer) error {
+	url, err := neturl.Parse(goInstaAPIUrl)
+	if err != nil {
+		return err
+	}
+
+	config := ConfigFile{
+		ID:        inst.Account.ID,
+		User:      inst.user,
+		DeviceID:  inst.dID,
+		UUID:      inst.uuid,
+		RankToken: inst.rankToken,
+		Token:     inst.token,
+		PhoneID:   inst.pid,
+		Cookies:   inst.c.Jar.Cookies(url),
+	}
+	bytes, err := json.Marshal(config)
+	if err != nil {
+		return err
+	}
+	_, err = writer.Write(bytes)
+	return err
+}
+
+// ImportReader imports instagram configuration from io.Reader
 //
 // This function does not set proxy automatically. Use SetProxy after this call.
-func Import(path string) (*Instagram, error) {
+func ImportReader(r io.Reader) (*Instagram, error) {
 	url, err := neturl.Parse(goInstaAPIUrl)
 	if err != nil {
 		return nil, err
 	}
 
-	bytes, err := ioutil.ReadFile(path)
+	bytes, err := ioutil.ReadAll(r)
 	if err != nil {
 		return nil, err
 	}
 
 	config := ConfigFile{}
-
 	err = json.Unmarshal(bytes, &config)
 	if err != nil {
 		return nil, err
@@ -206,6 +231,18 @@ func Import(path string) (*Instagram, error) {
 	inst.Account.Sync()
 
 	return inst, nil
+}
+
+// Import imports instagram configuration
+//
+// This function does not set proxy automatically. Use SetProxy after this call.
+func Import(path string) (*Instagram, error) {
+	f, err := os.Open(path)
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+	return ImportReader(f)
 }
 
 func (inst *Instagram) readMsisdnHeader() error {
@@ -267,7 +304,7 @@ func (inst *Instagram) zrToken() error {
 	return err
 }
 
-func (inst *Instagram) sendAdId() error {
+func (inst *Instagram) sendAdID() error {
 	data, err := inst.prepareData(
 		map[string]interface{}{
 			"adid": inst.adid,
@@ -306,7 +343,7 @@ func (inst *Instagram) Login() error {
 		return err
 	}
 
-	err = inst.sendAdId()
+	err = inst.sendAdID()
 	if err != nil {
 		return err
 	}
@@ -329,41 +366,34 @@ func (inst *Instagram) Login() error {
 			"google_tokens":       "[]",
 		},
 	)
-	if err == nil {
-		body, err := inst.sendRequest(
-			&reqOptions{
-				Endpoint: urlLogin,
-				Query:    generateSignature(b2s(result)),
-				IsPost:   true,
-				Login:    true,
-			},
-		)
-		if err != nil {
-			goto end
-		}
-		inst.pass = ""
+	if err != nil {
+		return err
+	}
+	body, err := inst.sendRequest(
+		&reqOptions{
+			Endpoint: urlLogin,
+			Query:    generateSignature(b2s(result)),
+			IsPost:   true,
+			Login:    true,
+		},
+	)
+	if err != nil {
+		return err
+	}
+	inst.pass = ""
 
-		// getting account data
-		res := accountResp{}
-
-		err = json.Unmarshal(body, &res)
-		if err != nil {
-			ierr := instaError{}
-			err = json.Unmarshal(body, &ierr)
-			if err != nil {
-				err = instaToErr(ierr)
-			}
-			goto end
-		}
-		inst.Account = &res.Account
-		inst.Account.inst = inst
-
-		inst.rankToken = strconv.FormatInt(inst.Account.ID, 10) + "_" + inst.uuid
-
-		inst.zrToken()
+	// getting account data
+	res := accountResp{}
+	err = json.Unmarshal(body, &res)
+	if err != nil {
+		return err
 	}
 
-end:
+	inst.Account = &res.Account
+	inst.Account.inst = inst
+	inst.rankToken = strconv.FormatInt(inst.Account.ID, 10) + "_" + inst.uuid
+	inst.zrToken()
+
 	return err
 }
 

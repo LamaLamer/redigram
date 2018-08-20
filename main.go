@@ -96,60 +96,95 @@ func FetchImage(url string) (image.Image, error) {
 	}
 }
 
-func MakePost(s Submission) (image.Image, string, error) {
-	if *imgpost {
-		if !IsImageURL(s.Url) {
-			return nil, "", fmt.Errorf("not an image post: %s", s.Url)
-		}
-		im, err := FetchImage(s.Url)
-		if err != nil {
-			return nil, "", err
-		}
-		return im, s.Title, nil
-	}
-	im, err := MakeImage(s.Title)
-	if err != nil {
-		return nil, "", err
-	}
-	cap, err := MakeCaption(s.Title)
-	if err != nil {
-		return nil, "", err
-	}
-	return im, cap, nil
-}
-
 func DoPost() error {
 	st := NewStore(*storedir)
-	ss, err := GetSubmissions(*subreddit)
+	ss, err := FetchSubmissions(*subreddit)
 	if err != nil {
 		return err
 	}
 	sort.Sort(ByScore(ss))
+	var unused []Submission
 	for _, s := range ss {
-		if st.Contains(s) || s.Score < *minscore {
-			continue
+		if !st.Contains(s) && s.Score >= *minscore {
+			unused = append(unused, s)
 		}
-		im, cap, err := MakePost(s)
-		if err != nil {
-			log.Println(err)
-			continue
-		}
-		if err := st.Insert(s); err != nil {
-			return err
-		}
-		fmt.Printf("Score: %d\nTitle: %s\nCaption: %s\n", s.Score, s.Title, cap)
-		if *dryrun {
-			fmt.Println("writing to post.jpeg")
-			f, err := os.Create("post.jpeg")
-			if err != nil {
-				return err
-			}
-			defer f.Close()
-			return jpeg.Encode(f, im, &jpeg.Options{Quality: jpeg.DefaultQuality})
-		}
-		return PostImage(im, cap)
 	}
-	return fmt.Errorf("all %d submissions are used", len(ss))
+	p, err := MakePost(st, unused)
+	if err != nil {
+		return err
+	}
+	if err := st.Insert(p.Submission); err != nil {
+		return err
+	}
+	if *dryrun {
+		return SavePost(p.Image)
+	}
+	fmt.Println(p)
+	return PostImage(p.Image, p.Caption)
+}
+
+func MakePost(st *Store, ss []Submission) (*Post, error) {
+	if *imgpost {
+		return MakeImagePost(st, ss)
+	}
+	return MakeTextPost(st, ss)
+}
+
+func SavePost(im image.Image) error {
+	fmt.Println("writing to post.jpeg")
+	f, err := os.Create("post.jpeg")
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	return jpeg.Encode(f, im, &jpeg.Options{Quality: jpeg.DefaultQuality})
+}
+
+type Post struct {
+	Image      image.Image
+	Caption    string
+	Submission Submission
+}
+
+func (p Post) String() string {
+	return fmt.Sprintf("Title: %s, Caption: %s", p.Submission.Title, p.Caption)
+}
+
+func MakeTextPost(st *Store, ss []Submission) (*Post, error) {
+	for _, s := range ss {
+		im, err := MakeImage(s.Title)
+		if err != nil {
+			return nil, err
+		}
+		cap, err := MakeCaption(s.Title)
+		if err != nil {
+			return nil, err
+		}
+		return &Post{
+			Image:      im,
+			Caption:    cap,
+			Submission: s,
+		}, nil
+	}
+	return nil, fmt.Errorf("all %d submissions are used", len(ss))
+}
+
+func MakeImagePost(st *Store, ss []Submission) (*Post, error) {
+	for _, s := range ss {
+		if !IsImageURL(s.Url) {
+			continue
+		}
+		im, err := FetchImage(s.Url)
+		if err != nil {
+			return nil, err
+		}
+		return &Post{
+			Image:      im,
+			Caption:    s.Title,
+			Submission: s,
+		}, nil
+	}
+	return nil, fmt.Errorf("all %d submissions are used", len(ss))
 }
 
 func PostImage(m image.Image, caption string) error {

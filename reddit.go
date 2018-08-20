@@ -71,7 +71,7 @@ func (s ByScore) Less(i, j int) bool {
 	return s[i].Score > s[j].Score
 }
 
-func GetSubmissions(subreddit string) ([]Submission, error) {
+func FetchSubmissions(subreddit string) ([]Submission, error) {
 	url := fmt.Sprintf("https://reddit.com/r/%s.json", subreddit)
 	req, err := http.NewRequest("GET", url, nil)
 	req.Header.Set("User-Agent", "Ilia's Awesome Bot/1.0")

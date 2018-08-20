@@ -1,13 +1,17 @@
 package main
 
 import (
-	"github.com/fogleman/gg"
-	"github.com/golang/freetype/truetype"
+	"fmt"
 	"image"
 	"image/color"
 	"io/ioutil"
 	"log"
 	"math"
+	"strings"
+
+	"github.com/fogleman/gg"
+	"github.com/golang/freetype/truetype"
+	"gopkg.in/jdkato/prose.v2"
 )
 
 var font *truetype.Font
@@ -21,6 +25,50 @@ func init() {
 	if err != nil {
 		log.Fatal(err)
 	}
+}
+
+const MaxCaptionLen = 2000
+
+func MakeCaption(s string) (string, error) {
+	doc, err := prose.NewDocument(s)
+	if err != nil {
+		return "", err
+	}
+	seen := map[string]bool{}
+	var caption strings.Builder
+	for _, tok := range doc.Tokens() {
+		if seen[tok.Text] {
+			continue
+		}
+		seen[tok.Text] = true
+		if caption.Len()+len(tok.Text) > MaxCaptionLen {
+			break
+		}
+		switch tok.Tag {
+		case "NNP", "NN", "JJ":
+			fmt.Fprintf(&caption, "#%s ", tok.Text)
+		}
+	}
+	return caption.String(), nil
+}
+
+func MakeTextPost(st *Store, ss []Submission) (*Post, error) {
+	for _, s := range ss {
+		im, err := MakeImage(s.Title)
+		if err != nil {
+			return nil, err
+		}
+		cap, err := MakeCaption(s.Title)
+		if err != nil {
+			return nil, err
+		}
+		return &Post{
+			Image:      im,
+			Caption:    cap,
+			Submission: s,
+		}, nil
+	}
+	return nil, fmt.Errorf("all %d submissions are used", len(ss))
 }
 
 func SetFontFace(dc *gg.Context, points float64) {

@@ -6,17 +6,11 @@ import (
 	"fmt"
 	"image"
 	"image/jpeg"
-	"image/png"
 	"log"
-	"net/http"
 	"os"
-	"path"
 	"sort"
-	"strings"
-	"time"
 
 	"github.com/ahmdrz/goinsta"
-	"gopkg.in/jdkato/prose.v2"
 )
 
 var (
@@ -36,63 +30,6 @@ func init() {
 func main() {
 	if err := DoPost(); err != nil {
 		log.Fatal(err)
-	}
-}
-
-const MaxCaptionLen = 2000
-
-func MakeCaption(s string) (string, error) {
-	doc, err := prose.NewDocument(s)
-	if err != nil {
-		return "", err
-	}
-	seen := map[string]bool{}
-	var caption strings.Builder
-	for _, tok := range doc.Tokens() {
-		if seen[tok.Text] {
-			continue
-		}
-		seen[tok.Text] = true
-		if caption.Len()+len(tok.Text) > MaxCaptionLen {
-			break
-		}
-		switch tok.Tag {
-		case "NNP", "NN", "JJ":
-			fmt.Fprintf(&caption, "#%s ", tok.Text)
-		}
-	}
-	return caption.String(), nil
-}
-
-func IsImageURL(url string) bool {
-	switch strings.ToLower(path.Ext(url)) {
-	case ".jpg", ".jpeg", ".png":
-		return true
-	default:
-		return false
-	}
-}
-
-func FetchImage(url string) (image.Image, error) {
-	client := &http.Client{
-		Timeout: 10 * time.Second,
-	}
-	req, err := http.NewRequest(http.MethodGet, url, nil)
-	if err != nil {
-		return nil, err
-	}
-	resp, err := client.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-	switch strings.ToLower(path.Ext(url)) {
-	case ".jpg", ".jpeg":
-		return jpeg.Decode(resp.Body)
-	case ".png":
-		return png.Decode(resp.Body)
-	default:
-		return nil, fmt.Errorf("unsuported image url: %s", url)
 	}
 }
 
@@ -120,7 +57,7 @@ func DoPost() error {
 	if *dryrun {
 		return SavePost(p.Image)
 	}
-	return PostImage(p.Image, p.Caption)
+	return UploadPost(p)
 }
 
 func MakePost(st *Store, ss []Submission) (*Post, error) {
@@ -128,16 +65,6 @@ func MakePost(st *Store, ss []Submission) (*Post, error) {
 		return MakeImagePost(st, ss)
 	}
 	return MakeTextPost(st, ss)
-}
-
-func SavePost(im image.Image) error {
-	fmt.Println("writing to post.jpeg")
-	f, err := os.Create("post.jpeg")
-	if err != nil {
-		return err
-	}
-	defer f.Close()
-	return jpeg.Encode(f, im, &jpeg.Options{Quality: jpeg.DefaultQuality})
 }
 
 type Post struct {
@@ -150,55 +77,28 @@ func (p Post) String() string {
 	return fmt.Sprintf("Title: %s, Caption: %s", p.Submission.Title, p.Caption)
 }
 
-func MakeTextPost(st *Store, ss []Submission) (*Post, error) {
-	for _, s := range ss {
-		im, err := MakeImage(s.Title)
-		if err != nil {
-			return nil, err
-		}
-		cap, err := MakeCaption(s.Title)
-		if err != nil {
-			return nil, err
-		}
-		return &Post{
-			Image:      im,
-			Caption:    cap,
-			Submission: s,
-		}, nil
-	}
-	return nil, fmt.Errorf("all %d submissions are used", len(ss))
-}
-
-func MakeImagePost(st *Store, ss []Submission) (*Post, error) {
-	for _, s := range ss {
-		if !IsImageURL(s.Url) {
-			continue
-		}
-		im, err := FetchImage(s.Url)
-		if err != nil {
-			return nil, err
-		}
-		return &Post{
-			Image:      im,
-			Caption:    s.Title,
-			Submission: s,
-		}, nil
-	}
-	return nil, fmt.Errorf("all %d submissions are used", len(ss))
-}
-
-func PostImage(m image.Image, caption string) error {
+func UploadPost(p *Post) error {
 	insta := goinsta.New(*username, *password)
 	if err := insta.Login(); err != nil {
 		return fmt.Errorf("failed to login: %v", err)
 	}
 	defer insta.Logout()
 	var buf bytes.Buffer
-	if err := jpeg.Encode(&buf, m, nil); err != nil {
+	if err := jpeg.Encode(&buf, p.Image, nil); err != nil {
 		return err
 	}
-	if _, err := insta.UploadPhoto(&buf, caption, 87, 0); err != nil {
+	if _, err := insta.UploadPhoto(&buf, p.Caption, 87, 0); err != nil {
 		return fmt.Errorf("failed to upload: %v", err)
 	}
 	return nil
+}
+
+func SavePost(im image.Image) error {
+	fmt.Println("writing to post.jpeg")
+	f, err := os.Create("post.jpeg")
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	return jpeg.Encode(f, im, &jpeg.Options{Quality: jpeg.DefaultQuality})
 }

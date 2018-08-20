@@ -9,6 +9,7 @@ import (
 	"image/png"
 	"log"
 	"net/http"
+	"os"
 	"path"
 	"sort"
 	"strings"
@@ -25,6 +26,7 @@ var (
 	storedir  = flag.String("store", "used", "Storage directory")
 	minscore  = flag.Int("minscore", 100, "Minimum score")
 	imgpost   = flag.Bool("imgpost", false, "Post Image")
+	dryrun    = flag.Bool("dry", false, "Don't actually post the image")
 )
 
 func init() {
@@ -136,6 +138,15 @@ func DoPost() error {
 			return err
 		}
 		fmt.Printf("Score: %d\nTitle: %s\nCaption: %s\n", s.Score, s.Title, cap)
+		if *dryrun {
+			fmt.Println("writing to post.jpeg")
+			f, err := os.Open("post.jpeg")
+			if err != nil {
+				return err
+			}
+			defer f.Close()
+			return jpeg.Encode(f, im, &jpeg.Options{Quality: jpeg.DefaultQuality})
+		}
 		return PostImage(im, cap)
 	}
 	return fmt.Errorf("all %d submissions are used", len(ss))

@@ -116,10 +116,10 @@ func DoPost() error {
 	if err := st.Insert(p.Submission); err != nil {
 		return err
 	}
+	fmt.Println(p)
 	if *dryrun {
 		return SavePost(p.Image)
 	}
-	fmt.Println(p)
 	return PostImage(p.Image, p.Caption)
 }
 

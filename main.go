@@ -68,7 +68,7 @@ func DoPost() error {
 		if st.Contains(s) || s.Score < *minscore {
 			continue
 		}
-		im, err := MakeImage(s.Title)
+		im, err := MakeTextImage(s.Title)
 		if err != nil {
 			return err
 		}

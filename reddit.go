@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"time"
 )
 
 type apiResponse struct {
@@ -74,7 +75,10 @@ func GetSubmissions(subreddit string) ([]Submission, error) {
 	url := fmt.Sprintf("https://reddit.com/r/%s.json", subreddit)
 	req, err := http.NewRequest("GET", url, nil)
 	req.Header.Set("User-Agent", "Ilia's Awesome Bot/1.0")
-	resp, err := new(http.Client).Do(req)
+	client := &http.Client{
+		Timeout: 10 * time.Second,
+	}
+	resp, err := client.Do(req)
 	if err != nil {
 		return nil, err
 	}

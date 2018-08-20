@@ -140,7 +140,7 @@ func DoPost() error {
 		fmt.Printf("Score: %d\nTitle: %s\nCaption: %s\n", s.Score, s.Title, cap)
 		if *dryrun {
 			fmt.Println("writing to post.jpeg")
-			f, err := os.Open("post.jpeg")
+			f, err := os.Create("post.jpeg")
 			if err != nil {
 				return err
 			}

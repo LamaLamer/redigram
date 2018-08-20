@@ -6,9 +6,13 @@ import (
 	"fmt"
 	"image"
 	"image/jpeg"
+	"image/png"
 	"log"
+	"net/http"
+	"path"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/ahmdrz/goinsta"
 	"gopkg.in/jdkato/prose.v2"
@@ -20,6 +24,7 @@ var (
 	password  = flag.String("password", "", "Instagram Password")
 	storedir  = flag.String("store", "used", "Storage directory")
 	minscore  = flag.Int("minscore", 100, "Minimum score")
+	imgpost   = flag.Bool("imgpost", false, "Post Image")
 )
 
 func init() {
@@ -57,6 +62,60 @@ func MakeCaption(s string) (string, error) {
 	return caption.String(), nil
 }
 
+func IsImageURL(url string) bool {
+	switch strings.ToLower(path.Ext(url)) {
+	case ".jpg", ".jpeg", ".png":
+		return true
+	default:
+		return false
+	}
+}
+
+func FetchImage(url string) (image.Image, error) {
+	client := &http.Client{
+		Timeout: 10 * time.Second,
+	}
+	req, err := http.NewRequest(http.MethodGet, url, nil)
+	if err != nil {
+		return nil, err
+	}
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	switch strings.ToLower(path.Ext(url)) {
+	case ".jpg", ".jpeg":
+		return jpeg.Decode(resp.Body)
+	case ".png":
+		return png.Decode(resp.Body)
+	default:
+		return nil, fmt.Errorf("unsuported image url: %s", url)
+	}
+}
+
+func MakePost(s Submission) (image.Image, string, error) {
+	if *imgpost {
+		if !IsImageURL(s.Url) {
+			return nil, "", fmt.Errorf("not an image post: %s", s.Url)
+		}
+		im, err := FetchImage(s.Url)
+		if err != nil {
+			return nil, "", err
+		}
+		return im, s.Title, nil
+	}
+	im, err := MakeImage(s.Title)
+	if err != nil {
+		return nil, "", err
+	}
+	cap, err := MakeCaption(s.Title)
+	if err != nil {
+		return nil, "", err
+	}
+	return im, cap, nil
+}
+
 func DoPost() error {
 	st := NewStore(*storedir)
 	ss, err := GetSubmissions(*subreddit)
@@ -68,13 +127,10 @@ func DoPost() error {
 		if st.Contains(s) || s.Score < *minscore {
 			continue
 		}
-		im, err := MakeTextImage(s.Title)
+		im, cap, err := MakePost(s)
 		if err != nil {
-			return err
-		}
-		cap, err := MakeCaption(s.Title)
-		if err != nil {
-			return err
+			log.Println(err)
+			continue
 		}
 		if err := st.Insert(s); err != nil {
 			return err

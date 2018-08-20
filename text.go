@@ -55,7 +55,7 @@ func SetBestFontFace(dc *gg.Context, s string, lineHeight, h, w float64) float64
 	}
 }
 
-func MakeTextImage(text string) (image.Image, error) {
+func MakeImage(text string) (image.Image, error) {
 	const W = 612
 	const H = 612
 	const P = 16

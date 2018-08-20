@@ -37,7 +37,7 @@ func MakeCaption(s string) (string, error) {
 	seen := map[string]bool{}
 	var caption strings.Builder
 	for _, tok := range doc.Tokens() {
-		if seen[tok.Text] {
+		if len(tok.Text) < 2 || seen[tok.Text] {
 			continue
 		}
 		seen[tok.Text] = true

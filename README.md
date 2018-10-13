@@ -1,13 +1,19 @@
-# R2I Bot
+# Redigram Bot
 
-> Take submissions from Reddit and post them on Instagram
+> Take top photos from Reddit and post them on Instagram
 
 ```
-Usage of ./r2i:
+Usage of ./redigram:
+  -dry
+        Don't actually post the image
+  -minscore int
+        Minimum score (default 100)
   -password string
-    	Instagram Password
+        Instagram Password
+  -store string
+        Storage directory (default "used")
   -sub string
-    	The Subreddit to pull from (default "UnethicalLifeProTips")
+        The Subreddit to pull from (default "memes")
   -username string
-    	Instagram Username (default "unethicallifeprotips")
+        Instagram Username
 ```

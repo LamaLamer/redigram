@@ -1,4 +1,4 @@
-module github.com/icholy/r2i_bot
+module github.com/icholy/redigram
 
 require (
 	github.com/ahmdrz/goinsta v0.0.0-20180813133549-85030591f359

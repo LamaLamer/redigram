@@ -3,8 +3,6 @@ package main
 import (
 	"fmt"
 	"image"
-	"image/jpeg"
-	"image/png"
 	"net/http"
 	"path"
 	"strings"
@@ -51,12 +49,6 @@ func FetchImage(url string) (image.Image, error) {
 		return nil, err
 	}
 	defer resp.Body.Close()
-	switch strings.ToLower(path.Ext(url)) {
-	case ".jpg", ".jpeg":
-		return jpeg.Decode(resp.Body)
-	case ".png":
-		return png.Decode(resp.Body)
-	default:
-		return nil, fmt.Errorf("unsuported image url: %s", url)
-	}
+	m, _, err := image.Decode(resp.Body)
+	return m, err
 }

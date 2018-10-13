@@ -14,12 +14,11 @@ import (
 )
 
 var (
-	subreddit = flag.String("sub", "UnethicalLifeProTips", "The Subreddit to pull from")
-	username  = flag.String("username", "unethicallifeprotips", "Instagram Username")
+	subreddit = flag.String("sub", "memes", "The Subreddit to pull from")
+	username  = flag.String("username", "", "Instagram Username")
 	password  = flag.String("password", "", "Instagram Password")
 	storedir  = flag.String("store", "used", "Storage directory")
 	minscore  = flag.Int("minscore", 100, "Minimum score")
-	imgpost   = flag.Bool("imgpost", false, "Post Image")
 	dryrun    = flag.Bool("dry", false, "Don't actually post the image")
 )
 
@@ -46,7 +45,7 @@ func DoPost() error {
 			unused = append(unused, s)
 		}
 	}
-	p, err := MakePost(st, unused)
+	p, err := MakeImagePost(st, unused)
 	if err != nil {
 		return err
 	}
@@ -58,13 +57,6 @@ func DoPost() error {
 		return SavePost(p.Image)
 	}
 	return UploadPost(p)
-}
-
-func MakePost(st *Store, ss []Submission) (*Post, error) {
-	if *imgpost {
-		return MakeImagePost(st, ss)
-	}
-	return MakeTextPost(st, ss)
 }
 
 type Post struct {
